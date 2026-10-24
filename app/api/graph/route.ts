@@ -24,11 +24,8 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: treeMember, error: treeError } = await supabase
-      .from('tree_member')
-      .select('tree_id')
-      .eq('user_id', user.id)
-      .single() as { data: TreeMemberRow | null; error: any }
+    const { data: treeMembers, error: treeError } = await supabase.from('tree_member').select('tree_id').eq('user_id', user.id).limit(1) as { data: TreeMemberRow[] | null; error: any }
+    const treeMember = (treeMembers as TreeMemberRow[] | null)?.[0] ?? null
 
     console.log('[GET /api/graph] treeMember:', treeMember?.tree_id ?? 'null', '| treeError:', treeError?.message ?? 'none')
 

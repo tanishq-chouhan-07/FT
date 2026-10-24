@@ -20,11 +20,8 @@ export async function POST(
     }
 
     // Get user's tree and role
-    const { data: treeMember, error: treeError } = await supabase
-      .from('tree_member')
-      .select('tree_id, role')
-      .eq('user_id', user.id)
-      .single() as { data: TreeMemberRow | null; error: any }
+    const { data: treeMembers, error: treeError } = await supabase.from('tree_member').select('tree_id, role').eq('user_id', user.id).limit(1) as { data: TreeMemberRow[] | null; error: any }
+    const treeMember = (treeMembers as TreeMemberRow[] | null)?.[0] ?? null
 
     if (treeError || !treeMember) {
       return NextResponse.json({ error: 'No tree found for user' }, { status: 404 })

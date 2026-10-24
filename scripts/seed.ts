@@ -20,7 +20,7 @@ if (!supabaseUrl || !supabaseServiceRoleKey) {
 const supabase = createClient(supabaseUrl, supabaseServiceRoleKey)
 
 // Test data
-const TEST_TREE = {
+const TEST_TREE_BASE = {
   name: 'Test Family',
   description: 'A sample family tree for testing the application',
 }
@@ -29,7 +29,7 @@ const TEST_PEOPLE = [
   // Generation 1: Grandparents
   {
     full_name: 'John Smith',
-    gender: 'male' as const,
+    gender: 'Male' as const,
     birth_date: '1940-01-15',
     death_date: '2010-03-20',
     is_alive: false,
@@ -39,7 +39,7 @@ const TEST_PEOPLE = [
   },
   {
     full_name: 'Mary Smith',
-    gender: 'female' as const,
+    gender: 'Female' as const,
     birth_date: '1942-05-22',
     death_date: null,
     is_alive: true,
@@ -51,7 +51,7 @@ const TEST_PEOPLE = [
   // Generation 2: Parents
   {
     full_name: 'Robert Smith',
-    gender: 'male' as const,
+    gender: 'Male' as const,
     birth_date: '1965-08-10',
     death_date: null,
     is_alive: true,
@@ -61,7 +61,7 @@ const TEST_PEOPLE = [
   },
   {
     full_name: 'Lisa Johnson',
-    gender: 'female' as const,
+    gender: 'Female' as const,
     birth_date: '1968-11-30',
     death_date: null,
     is_alive: true,
@@ -73,7 +73,7 @@ const TEST_PEOPLE = [
   // Generation 3: User and sibling
   {
     full_name: 'Michael Smith',
-    gender: 'male' as const,
+    gender: 'Male' as const,
     birth_date: '1990-04-12',
     death_date: null,
     is_alive: true,
@@ -83,7 +83,7 @@ const TEST_PEOPLE = [
   },
   {
     full_name: 'Sarah Smith',
-    gender: 'female' as const,
+    gender: 'Female' as const,
     birth_date: '1992-07-25',
     death_date: null,
     is_alive: true,
@@ -95,7 +95,7 @@ const TEST_PEOPLE = [
   // Generation 4: Children
   {
     full_name: 'Emma Smith',
-    gender: 'female' as const,
+    gender: 'Female' as const,
     birth_date: '2020-02-14',
     death_date: null,
     is_alive: true,
@@ -105,7 +105,7 @@ const TEST_PEOPLE = [
   },
   {
     full_name: 'James Smith',
-    gender: 'male' as const,
+    gender: 'Male' as const,
     birth_date: '2022-06-01',
     death_date: null,
     is_alive: true,
@@ -117,7 +117,7 @@ const TEST_PEOPLE = [
   // Extended family
   {
     full_name: 'William Smith',
-    gender: 'male' as const,
+    gender: 'Male' as const,
     birth_date: '1970-03-18',
     death_date: null,
     is_alive: true,
@@ -127,7 +127,7 @@ const TEST_PEOPLE = [
   },
   {
     full_name: 'Jennifer Williams',
-    gender: 'female' as const,
+    gender: 'Female' as const,
     birth_date: '1975-09-05',
     death_date: null,
     is_alive: true,
@@ -208,6 +208,7 @@ async function seedDatabase() {
 
   // Create a new tree
   console.log('📝 Creating new tree...')
+  const TEST_TREE = { ...TEST_TREE_BASE, created_by: user.id }
   const { data: tree, error: treeError } = await supabase
     .from('tree')
     .insert([TEST_TREE])
@@ -288,13 +289,13 @@ async function seedDatabase() {
     const partnerId = await getPersonByName(supabase, tree.id, p.partner)
 
     if (personId && partnerId) {
+      const [partner1_id, partner2_id] = [personId, partnerId].sort()
       const { error: partnershipError } = await supabase
         .from('partnership')
         .insert([{
           tree_id: tree.id,
-          person_id: personId,
-          partner_id: partnerId,
-          partnership_type: p.type,
+          partner1_id,
+          partner2_id,
           start_date: new Date().toISOString().split('T')[0], // Today
         }])
 

@@ -81,10 +81,14 @@ const partners = [
 
 let pOk = 0
 for (const p of partners) {
+  const pid1 = id(p.p1), pid2 = id(p.p2)
+  if (!pid1 || !pid2) { console.warn(`  ⚠ ${p.p1} ↔ ${p.p2}: missing id`); continue }
+  // FIX: canonical ordering — partnership unique constraint is ordered, API sorts to avoid duplicate
+  const [partner1_id, partner2_id] = [pid1, pid2].sort()
   const { error } = await s.from('partnership').insert({
     tree_id: TARGET_TREE,
-    partner1_id: id(p.p1),
-    partner2_id: id(p.p2),
+    partner1_id,
+    partner2_id,
   })
   if (error) console.warn(`  ⚠ ${p.p1} ↔ ${p.p2}: ${error.message}`)
   else pOk++

@@ -18,11 +18,8 @@ export async function GET(_request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: treeMember, error: memberError } = await supabase
-      .from('tree_member')
-      .select('tree_id, role')
-      .eq('user_id', user.id)
-      .single() as { data: TreeMemberRow | null; error: any }
+    const { data: treeMembers, error: memberError } = await supabase.from('tree_member').select('tree_id, role').eq('user_id', user.id).limit(1) as { data: TreeMemberRow[] | null; error: any }
+    const treeMember = (treeMembers as TreeMemberRow[] | null)?.[0] ?? null
 
     console.log('[GET /api/tree-info] treeMember:', JSON.stringify(treeMember), '| memberError:', memberError?.message ?? 'none')
 
@@ -62,11 +59,8 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Get user's tree membership
-    const { data: treeMember, error: memberError } = await supabase
-      .from('tree_member')
-      .select('tree_id, role')
-      .eq('user_id', user.id)
-      .single() as { data: TreeMemberRow | null; error: any }
+    const { data: treeMembers, error: memberError } = await supabase.from('tree_member').select('tree_id, role').eq('user_id', user.id).limit(1) as { data: TreeMemberRow[] | null; error: any }
+    const treeMember = (treeMembers as TreeMemberRow[] | null)?.[0] ?? null
 
     if (memberError || !treeMember) {
       return NextResponse.json({ error: 'No tree found for user' }, { status: 404 })

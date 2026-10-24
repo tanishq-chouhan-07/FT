@@ -8,8 +8,9 @@ DECLARE
   new_tree_id UUID;
 BEGIN
   -- Create a new tree for the user
-  INSERT INTO tree (name, created_at, updated_at)
-  VALUES (NEW.email || '''s Family Tree', NOW(), NOW())
+  -- FIX: tree.created_by is NOT NULL (see 001_schema.sql). Must supply NEW.id.
+  INSERT INTO tree (name, created_by, created_at, updated_at)
+  VALUES (COALESCE(NEW.email, 'User') || '''s Family Tree', NEW.id, NOW(), NOW())
   RETURNING id INTO new_tree_id;
   
   -- Assign the user as owner of the new tree

@@ -1,6 +1,7 @@
 /**
  * Quick seed script - run this after setting up your .env.local
  * Usage: npm run seed
+ * FIXED: gender must be capitalised (Male/Female per DB CHECK), partnership cols are partner1_id/partner2_id, and tree requires created_by
  */
 
 import { createClient } from '@supabase/supabase-js'
@@ -23,20 +24,27 @@ const supabase = createClient(supabaseUrl, supabaseServiceRoleKey)
 async function seed() {
   console.log('🚀 Starting seed...\n')
 
-  // 1. Get authenticated user
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) {
-    console.error('❌ Not authenticated. Run: npx supabase login')
+  // 1. Get authenticated user — with service_role we must list users, not getUser()
+  let user: { id: string; email: string | null } | null = null
+  const { data: { user: authUser } } = await supabase.auth.getUser()
+  if (authUser) {
+    user = { id: authUser.id, email: authUser.email ?? null }
+  } else {
+    const { data } = await supabase.auth.admin.listUsers()
+    if (data?.users?.length) user = { id: data.users[0].id, email: data.users[0].email ?? null }
+  }
+  if (!user) {
+    console.error('❌ Not authenticated. Create a user via Supabase Dashboard → Authentication → Users, then re-run.')
     process.exit(1)
   }
 
-  console.log(`👤 User: ${user.email}\n`)
+  console.log(`👤 User: ${user.email} (${user.id})\n`)
 
-  // 2. Create tree
+  // 2. Create tree — must include created_by (NOT NULL FK)
   console.log('📝 Creating tree...')
   const { data: tree, error: treeErr } = await supabase
     .from('tree')
-    .insert([{ name: 'Test Family', description: 'Test data for MVP' }])
+    .insert([{ name: 'Test Family', description: 'Test data for MVP', created_by: user.id }])
     .select()
     .single()
 
@@ -48,29 +56,35 @@ async function seed() {
 
   // 3. Create tree member
   console.log('👥 Creating membership...')
-  await supabase
+  const { error: memberErr } = await supabase
     .from('tree_member')
     .insert([{ tree_id: tree.id, user_id: user.id, role: 'owner' }])
+  if (memberErr) console.error('Member error:', memberErr)
+  else console.log('✓ Membership created\n')
 
-  // 4. Insert people
+  // 4. Insert people — gender MUST be 'Male'/'Female' per DB CHECK constraint
   console.log('👤 Inserting 10 test people...')
 
   const people = await supabase
     .from('person')
     .insert([
-      { tree_id: tree.id, full_name: 'John Smith', gender: 'male', birth_date: '1940-01-15', city: 'New York', country: 'USA' },
-      { tree_id: tree.id, full_name: 'Mary Smith', gender: 'female', birth_date: '1942-05-22', city: 'Boston', country: 'USA' },
-      { tree_id: tree.id, full_name: 'Robert Smith', gender: 'male', birth_date: '1965-08-10', city: 'Chicago', country: 'USA' },
-      { tree_id: tree.id, full_name: 'Lisa Johnson', gender: 'female', birth_date: '1968-11-30', city: 'Chicago', country: 'USA' },
-      { tree_id: tree.id, full_name: 'Michael Smith', gender: 'male', birth_date: '1990-04-12', city: 'Seattle', country: 'USA' },
-      { tree_id: tree.id, full_name: 'Sarah Smith', gender: 'female', birth_date: '1992-07-25', city: 'Denver', country: 'USA' },
-      { tree_id: tree.id, full_name: 'Emma Smith', gender: 'female', birth_date: '2020-02-14', city: 'Seattle', country: 'USA' },
-      { tree_id: tree.id, full_name: 'James Smith', gender: 'male', birth_date: '2022-06-01', city: 'Seattle', country: 'USA' },
-      { tree_id: tree.id, full_name: 'William Smith', gender: 'male', birth_date: '1970-03-18', city: 'Austin', country: 'USA' },
-      { tree_id: tree.id, full_name: 'Jennifer Williams', gender: 'female', birth_date: '1975-09-05', city: 'Miami', country: 'USA' },
+      { tree_id: tree.id, full_name: 'John Smith', gender: 'Male', birth_date: '1940-01-15', city: 'New York', country: 'USA' },
+      { tree_id: tree.id, full_name: 'Mary Smith', gender: 'Female', birth_date: '1942-05-22', city: 'Boston', country: 'USA' },
+      { tree_id: tree.id, full_name: 'Robert Smith', gender: 'Male', birth_date: '1965-08-10', city: 'Chicago', country: 'USA' },
+      { tree_id: tree.id, full_name: 'Lisa Johnson', gender: 'Female', birth_date: '1968-11-30', city: 'Chicago', country: 'USA' },
+      { tree_id: tree.id, full_name: 'Michael Smith', gender: 'Male', birth_date: '1990-04-12', city: 'Seattle', country: 'USA' },
+      { tree_id: tree.id, full_name: 'Sarah Smith', gender: 'Female', birth_date: '1992-07-25', city: 'Denver', country: 'USA' },
+      { tree_id: tree.id, full_name: 'Emma Smith', gender: 'Female', birth_date: '2020-02-14', city: 'Seattle', country: 'USA' },
+      { tree_id: tree.id, full_name: 'James Smith', gender: 'Male', birth_date: '2022-06-01', city: 'Seattle', country: 'USA' },
+      { tree_id: tree.id, full_name: 'William Smith', gender: 'Male', birth_date: '1970-03-18', city: 'Austin', country: 'USA' },
+      { tree_id: tree.id, full_name: 'Jennifer Williams', gender: 'Female', birth_date: '1975-09-05', city: 'Miami', country: 'USA' },
     ])
     .select()
 
+  if (people.error) {
+    console.error('People insert error:', people.error)
+    return
+  }
   console.log(`✓ Inserted ${people.data?.length} people\n`)
 
   // 5. Create parent-child relationships
@@ -113,7 +127,7 @@ async function seed() {
   }
   console.log(`✓ Created ${parentChild.length} parent-child relationships\n`)
 
-  // 6. Create partnerships
+  // 6. Create partnerships — FIXED: use partner1_id/partner2_id + sort to respect unique constraint
   console.log('💍 Creating partnerships...')
   const partnerships = [
     { person: 'John Smith', partner: 'Mary Smith' },
@@ -137,9 +151,11 @@ async function seed() {
       .single()).data?.id
 
     if (personId && partnerId) {
-      await supabase
+      const [partner1_id, partner2_id] = [personId, partnerId].sort()
+      const { error: psErr } = await supabase
         .from('partnership')
-        .insert([{ tree_id: tree.id, person_id: personId, partner_id: partnerId, partnership_type: 'marriage' }])
+        .insert([{ tree_id: tree.id, partner1_id, partner2_id }])
+      if (psErr) console.warn(`  ⚠ partnership ${p.person} ↔ ${p.partner}: ${psErr.message}`)
     }
   }
   console.log(`✓ Created ${partnerships.length} partnerships\n`)

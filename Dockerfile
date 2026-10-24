@@ -14,7 +14,10 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Build the application
+# Ensure public exists (Next.js standalone build expects it, repo has none)
+RUN mkdir -p ./public
+
+# Build the application — requires next.config.js `output: 'standalone'`
 RUN npm run build
 
 # Production image, copy all the files and run next
@@ -26,7 +29,7 @@ ENV NODE_ENV=production
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nextjs -u 1001
 
-# Copy from builder
+# Copy from builder — standalone output
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
